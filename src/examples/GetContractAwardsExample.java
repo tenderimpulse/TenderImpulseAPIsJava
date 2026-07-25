@@ -11,20 +11,20 @@ import java.nio.file.Paths;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import client.TenderImpulseClient;
+import client.TenderImpulseContractAwardClient;
 
 /**
- * Fetches one batch of tenders and stores the returned fetch id so the next
- * run resumes from where this one stopped.
+ * Fetches one batch of contract awards and stores the returned fetch id so the
+ * next run resumes from where this one stopped.
  *
  * Compatible with Java 17 and above.
  */
-public class GetTendersExample {
+public class GetContractAwardsExample {
 
 	/**
-	 * Local folder where tender documents will be stored.
+	 * Local folder where contract award documents will be stored.
 	 */
-	private static final String STORE_PATH = "tender-documents";
+	private static final String STORE_PATH = "contract-award-documents";
 
 	/**
 	 * Access token provided by Tender Impulse.
@@ -39,38 +39,39 @@ public class GetTendersExample {
 	/**
 	 * File where the last fetch id is stored between runs.
 	 */
-	private static final Path STATE_FILE = Paths.get("tender-state.json").toAbsolutePath();
+	private static final Path STATE_FILE = Paths.get("contract-award-state.json").toAbsolutePath();
 
 	/**
 	 * Fetch id to start from the very first time this example is run.
 	 */
-	private static final long INITIAL_LAST_ID = 13573781;
+	private static final long INITIAL_LAST_ID = 261374;
 
 	/**
 	 * Entry point.
 	 */
 	public static void main(String[] args) throws Exception {
 
-		// Tenders are published worldwide, so titles and addresses are often
-		// non-English. Print as UTF-8 instead of the platform console encoding.
+		// Contract awards are published worldwide, so names and descriptions are
+		// often non-English. Print as UTF-8 instead of the console encoding.
 		System.setOut(new PrintStream(new FileOutputStream(FileDescriptor.out), true, StandardCharsets.UTF_8));
 
-		TenderImpulseClient client = new TenderImpulseClient(STORE_PATH, ACCESS_TOKEN, KEY);
+		TenderImpulseContractAwardClient client =
+				new TenderImpulseContractAwardClient(STORE_PATH, ACCESS_TOKEN, KEY);
 
 		long lastId = readLastId();
 
 		System.out.println("Last Id: " + lastId);
 
-		JSONObject result = client.getTenders(lastId);
+		JSONObject result = client.getContractAwards(lastId);
 
 		if ("success".equals(result.getString("status"))) {
 
-			JSONArray tenders = result.getJSONArray("tenders");
+			JSONArray contracts = result.getJSONArray("contracts");
 			long lastFetchId = result.getLong("last_fetch_id");
 
-			System.out.println("Tenders Fetched: " + tenders.length());
+			System.out.println("Contract Awards Fetched: " + contracts.length());
 			System.out.println("Last Fetch Id: " + lastFetchId);
-			System.out.println("Tenders: " + tenders.toString(2));
+			System.out.println("Contract Awards: " + contracts.toString(2));
 
 			// Store the fetch id only after the batch has been handled,
 			// so nothing is skipped if the run fails midway.
