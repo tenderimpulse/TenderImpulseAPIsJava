@@ -11,66 +11,73 @@ import java.nio.file.Paths;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import client.TenderImpulseClient;
+import client.TenderImpulseTenderNewsClient;
 
 /**
- * Fetches one batch of tenders and stores the returned fetch id so the next
- * run resumes from where this one stopped.
+ * Fetches one batch of tender news articles and stores the returned fetch id
+ * so the next run resumes from where this one stopped.
  *
  * Compatible with Java 17 and above.
  */
-public class GetTendersExample {
-
-	/**
-	 * Local folder where tender documents will be stored.
-	 */
-	private static final String STORE_PATH = "tender-documents";
+public class GetTenderNewsExample {
 
 	/**
 	 * Access token provided by Tender Impulse.
 	 */
-	private static final String ACCESS_TOKEN = "your_access_token";
+	private static final String ACCESS_TOKEN = "m7a9re4f2r8d510a6n359d1v7a2cae85";
 
 	/**
 	 * AES decryption key provided by Tender Impulse.
 	 */
-	private static final String KEY = "your_key";
+	private static final String KEY = "v1t3y2b9n7mN1T8f";
 
 	/**
 	 * File where the last fetch id is stored between runs.
 	 */
-	private static final Path STATE_FILE = Paths.get("tender-state.json").toAbsolutePath();
+	private static final Path STATE_FILE = Paths.get("tender-news-state.json").toAbsolutePath();
 
 	/**
 	 * Fetch id to start from the very first time this example is run.
 	 */
-	private static final long INITIAL_LAST_ID = 8156394;
+	private static final long INITIAL_LAST_ID = 18016;
 
 	/**
 	 * Entry point.
 	 */
 	public static void main(String[] args) throws Exception {
 
-		// Tenders are published worldwide, so titles and addresses are often
-		// non-English. Print as UTF-8 instead of the platform console encoding.
+		// Tender news covers procurement worldwide, so headlines are often
+		// non-English. Print as UTF-8 instead of the console encoding.
 		System.setOut(new PrintStream(new FileOutputStream(FileDescriptor.out), true, StandardCharsets.UTF_8));
 
-		TenderImpulseClient client = new TenderImpulseClient(STORE_PATH, ACCESS_TOKEN, KEY);
+		TenderImpulseTenderNewsClient client = new TenderImpulseTenderNewsClient(ACCESS_TOKEN, KEY);
 
 		long lastId = readLastId();
 
 		System.out.println("Last Id: " + lastId);
 
-		JSONObject result = client.getTenders(lastId);
+		JSONObject result = client.getTenderNews(lastId);
 
 		if ("success".equals(result.getString("status"))) {
 
-			JSONArray tenders = result.getJSONArray("tenders");
+			JSONArray tenderNews = result.getJSONArray("news");
 			long lastFetchId = result.getLong("last_fetch_id");
 
-			System.out.println("Tenders Fetched: " + tenders.length());
+			System.out.println("Tender News Fetched: " + tenderNews.length());
 			System.out.println("Last Fetch Id: " + lastFetchId);
-			System.out.println("Tenders: " + tenders.toString(2));
+
+			// Only the headline fields are printed here. Every article also
+			// carries longdescription, which holds the full article HTML.
+			for (int i = 0; i < tenderNews.length(); i++) {
+
+				JSONObject article = tenderNews.getJSONObject(i);
+
+				System.out.println("- [" + article.getString("blogid") + "] "
+						+ article.getString("blogtitle")
+						+ " (" + article.getString("publishdate") + ")");
+				System.out.println("  countries: " + article.getString("countries"));
+				System.out.println("  sectors: " + article.getString("sectors"));
+			}
 
 			// Store the fetch id only after the batch has been handled,
 			// so nothing is skipped if the run fails midway.

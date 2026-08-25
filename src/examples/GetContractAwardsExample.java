@@ -44,7 +44,7 @@ public class GetContractAwardsExample {
 	/**
 	 * Fetch id to start from the very first time this example is run.
 	 */
-	private static final long INITIAL_LAST_ID = 261374;
+	private static final long INITIAL_LAST_ID = 261375;
 
 	/**
 	 * Entry point.

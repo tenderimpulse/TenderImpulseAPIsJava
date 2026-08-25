@@ -1,6 +1,6 @@
 # Tender Impulse API Java
 
-Java example code demonstrating how to integrate with Tender Impulse APIs to retrieve global tender notices and contract awards, process encrypted API responses, validate data integrity, and download associated documents.
+Java example code demonstrating how to integrate with Tender Impulse APIs to retrieve global tender notices, contract awards and tender news, process encrypted API responses, validate data integrity, and download associated documents.
 
 Tender Impulse provides access to over **20,000 global tenders daily**, helping organizations discover procurement opportunities from government agencies, public sector organizations, and international institutions worldwide.
 
@@ -11,6 +11,8 @@ Tender Impulse provides access to over **20,000 global tenders daily**, helping 
 https://tenderimpulse.com/request-call-back
 
 Once your request has been approved, you will receive the credentials required to authenticate and access the APIs.
+
+Access is granted per API. A token that works for one endpoint is rejected with `401 Invalid Token` on any API your subscription does not cover.
 
 ## Installation
 
@@ -24,6 +26,7 @@ mvn clean compile
 
 * Retrieve global tender notices
 * Retrieve contract awards
+* Retrieve tender news articles
 * Fetch id tracking so each run resumes where the last one stopped
 * Download tender and contract award documents
 * Secure API authentication using access tokens
@@ -37,14 +40,16 @@ mvn clean compile
 | --- | --- |
 | `src/client/TenderImpulseClient.java` | Client for the tender notice API |
 | `src/client/TenderImpulseContractAwardClient.java` | Client for the contract award API |
+| `src/client/TenderImpulseTenderNewsClient.java` | Client for the tender news API |
 | `src/examples/GetTendersExample.java` | Runnable example for tenders |
 | `src/examples/GetContractAwardsExample.java` | Runnable example for contract awards |
+| `src/examples/GetTenderNewsExample.java` | Runnable example for tender news |
 
-Each client is self-contained: it performs the request, decrypts and verifies the payload, downloads the documents, and returns a plain `JSONObject`. The examples only deal with credentials, fetch id storage, and printing.
+Each client is self-contained: it performs the request, decrypts and verifies the payload, downloads any documents, and returns a plain `JSONObject`. The examples only deal with credentials, fetch id storage, and printing.
 
 ## How the APIs Work
 
-Both APIs return records in batches, and you page through them using an id rather than a date. Each call takes a `lastid` and returns the records that come after it, along with a `fetchid` - the id of the last record in that batch. The `fetchid` is what you pass as the `lastid` of your next call.
+All three APIs return records in batches, and you page through them using an id rather than a date. Each call takes a `lastid` and returns the records that come after it, along with a `fetchid` - the id of the last record in that batch. The `fetchid` is what you pass as the `lastid` of your next call.
 
 The full cycle is:
 
@@ -60,6 +65,7 @@ A few details worth knowing:
 * When a batch is empty, `fetchid` comes back equal to the `lastid` you sent, so storing it is always safe.
 * Store the `fetchid` only after you have finished handling the batch. If you store it first and then fail, those records are skipped permanently - there is no way to ask for them again.
 * Sending a `lastid` higher than the server's own last fetch id is rejected with a message telling you the maximum allowed value.
+* Each API has its own id sequence, so the three examples track their fetch ids independently.
 
 The examples in this repository perform a single call and store the `fetchid` for the next one. Steps 3 to 5 - waiting, repeating, and scheduling the daily run - are left for you to implement in whatever way suits your application.
 
@@ -88,22 +94,31 @@ Configure the same credentials in `src/examples/GetContractAwardsExample.java`, 
 mvn compile exec:java -Dexec.mainClass=examples.GetContractAwardsExample
 ```
 
-Both examples can also be launched directly from an IDE - each one has a `main` method and takes no arguments.
+### Tender News
+
+Configure the same credentials in `src/examples/GetTenderNewsExample.java`, then run:
+
+```bash
+mvn compile exec:java -Dexec.mainClass=examples.GetTenderNewsExample
+```
+
+All three examples can also be launched directly from an IDE - each one has a `main` method and takes no arguments.
 
 ### Fetch Id Storage
 
 Each example makes a single call and then stores the returned `fetchid` in a small JSON file in the working directory, so the next run picks up from there. The examples deliberately do not loop - repeating the call is left to you, so the flow stays easy to read:
 
-| Example | State file |
-| --- | --- |
-| `GetTendersExample` | `tender-state.json` |
-| `GetContractAwardsExample` | `contract-award-state.json` |
+| Example | State file | Starting id |
+| --- | --- | --- |
+| `GetTendersExample` | `tender-state.json` | 8156394 |
+| `GetContractAwardsExample` | `contract-award-state.json` | 261375 |
+| `GetTenderNewsExample` | `tender-news-state.json` | 18016 |
 
 The file looks like this:
 
 ```json
 {
-  "fetchid": 13573781
+  "fetchid": 8156394
 }
 ```
 
@@ -117,7 +132,7 @@ No date handling is needed anywhere in this flow: the stored `fetchid` already t
 
 ## Documents
 
-Every document referenced by a record is downloaded before that record is returned, into the folder named by the `STORE_PATH` constant:
+Every document referenced by a tender or contract award is downloaded before that record is returned, into the folder named by the `STORE_PATH` constant:
 
 | Example | Folder |
 | --- | --- |
@@ -125,6 +140,8 @@ Every document referenced by a record is downloaded before that record is return
 | `GetContractAwardsExample` | `contract-award-documents/` |
 
 Sub-directories are created as needed, and the returned `filename` and `filepath` fields point at the local copy rather than the remote URL. Tenders always carry a document; contract awards do not, so their `filename` and `filepath` are `null` when there is nothing to download.
+
+Tender news articles carry their full body inline, in the `longdescription` field, so nothing is downloaded. `TenderImpulseTenderNewsClient` therefore takes no store path - just an access token and key.
 
 ## Response Structure
 
@@ -134,7 +151,7 @@ Sub-directories are created as needed, and the returned `filename` and `filepath
 {
   "status": "success",
   "tenders": [],
-  "last_fetch_id": 13573781
+  "last_fetch_id": 8156394
 }
 ```
 
@@ -144,7 +161,17 @@ Sub-directories are created as needed, and the returned `filename` and `filepath
 {
   "status": "success",
   "contracts": [],
-  "last_fetch_id": 261374
+  "last_fetch_id": 261375
+}
+```
+
+`TenderImpulseTenderNewsClient.getTenderNews(long lastId)` puts the records under `news`, the same key the API payload uses:
+
+```json
+{
+  "status": "success",
+  "news": [],
+  "last_fetch_id": 18016
 }
 ```
 
@@ -157,7 +184,7 @@ In case of an error:
 }
 ```
 
-Neither method throws - failures during the request, decryption, integrity check, or document download are reported through the `error` status, so a caller only has to check `status`.
+None of these methods throw - failures during the request, decryption, integrity check, or document download are reported through the `error` status, so a caller only has to check `status`.
 
 ## Requirements
 

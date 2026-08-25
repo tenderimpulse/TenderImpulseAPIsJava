@@ -60,6 +60,7 @@ replay_pid*
 # Fetch id tracking written by the examples
 tender-state.json
 contract-award-state.json
+tender-news-state.json
 
 # Documents downloaded by the examples
 tender-documents/
